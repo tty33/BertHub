@@ -66,7 +66,7 @@ class ModelOutput(object):
 
 def load_data(path, train_test):
     
-    with open(path + '{}.json'.format(train_test)) as json_file:
+    with open(os.path.join(path ,'{}.json'.format(train_test)),encoding='utf-8') as json_file:
         data = json.load(json_file)
 
     option = ['A', 'B', 'C', 'D']

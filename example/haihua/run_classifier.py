@@ -31,7 +31,7 @@ def main():
     bring a link. 
     4、Great wishes in modeling, enjoy it !!!
     '''
-    PATH = 'drive/MyDrive/drive/haihua/data/'
+    PATH = 'data'
     SEED = 2020
     EPOCHS = 5
     BATCH_SIZE = 16
