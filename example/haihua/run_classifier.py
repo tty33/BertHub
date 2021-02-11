@@ -5,6 +5,7 @@
 # @Moto    : 良好的阶段性收获是坚持的重要动力之一
 # @Contract: Mason_Jay@163.com
 import os
+import pickle
 import torch
 import random
 import numpy as np
@@ -30,7 +31,7 @@ def main():
     bring a link. 
     4、Great wishes in modeling, enjoy it !!!
     '''
-    PATH = 'drive/MyDrive/drive/haihua/data/'
+    PATH = 'data/'
     SEED = 2020
     EPOCHS = 5
     BATCH_SIZE = 16
@@ -39,20 +40,29 @@ def main():
     NAME = 'hfl/chinese-bert-wwm'
 
     fix_seed(SEED)
-    train = load_data(PATH, train_test='train')
-    test = load_data(PATH, train_test='validation')
+    if os.path.exists(os.path.join(PATH,'train.bin')) :
+        train = pickle.load(open(os.path.join(PATH,'train.bin')))
+    else:
+        train = load_data(PATH, train_test='train')
+        pickle.dump(train,open(os.path.join(PATH,'train.bin'),mode='wb'))
+    if os.path.exists(os.path.join(PATH,'test.bin')) :
+        test = pickle.load(open(os.path.join(PATH,'test.bin')))
+    else:
+        test = load_data(PATH, train_test='validation')
+        pickle.dump(train,open(os.path.join(PATH,'test.bin'),mode='wb'))
+
     print('train example: context={}, pair={}, label={}'.format(
                                         train[0].context, train[0].pair,train[0].label))
     print('test example: context={}, pair={}, label={}'.format(
                                         test[0].context, test[0].pair, test[0].label))
     print('Data loaded!!')
     print('***************************')
-
+    print("process train data ...")
     train_dataloader, valid_dataloader = process(train, NAME, BATCH_SIZE, MAX_LENGTH, threshold=0.8)
     del train
     print('train data process done !!')
     print('###########################')
-    
+    print("process test data ...")
     test_dataloader = process(test, NAME, BATCH_SIZE, MAX_LENGTH)
     del test
     print('test data process done !!')

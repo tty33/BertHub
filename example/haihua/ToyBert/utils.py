@@ -45,7 +45,7 @@ class InputExample(object):
         self.label = label
 
 def load_data(path, train_test):
-  with open(path + '{}.json'.format(train_test)) as json_file:
+  with open(path + '{}.json'.format(train_test),encoding='utf-8') as json_file:
       data = json.load(json_file)
 
   option = ['A', 'B', 'C', 'D']
@@ -60,7 +60,7 @@ def load_data(path, train_test):
     context = item['Content']
     for qa in item['Questions']:
         Id = qa['Q_id']
-        answer = label_map[qa['Answer']] if len(qa)==4 is not None else -1
+        answer = label_map[qa['Answer']] if len(qa)==4 and qa is not None else -1
         question = qa['Question']
         choice = qa['Choices']
     

@@ -9,7 +9,7 @@ import numpy as np
 from transformers import BertTokenizer
 from torch.utils.data import DataLoader, SequentialSampler, RandomSampler, random_split, TensorDataset
 from ToyBert.utils import InputFeature, select_field
-
+from tqdm import tqdm
 def process(data, name, batch_size, max_length, threshold=None):
     '''
     Parameters@
@@ -25,7 +25,8 @@ def process(data, name, batch_size, max_length, threshold=None):
 
     tokenizer = BertTokenizer.from_pretrained(name)
     features = []
-    for example in data:
+
+    for example in tqdm(data):
         choices_features = []
         count= 0
         for para, qa in zip(example.pair, example.context):
