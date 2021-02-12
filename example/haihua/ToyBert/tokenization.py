@@ -64,6 +64,9 @@ def process(data, name, batch_size, max_length, threshold=None):
                     label = label
                 )
             )
+
+
+
     ids = torch.tensor([f.example_id for f in features], dtype=torch.long)
     input_ids = torch.tensor(select_field(features, 'input_ids'), dtype=torch.long)
     attention_mask = torch.tensor(select_field(features, 'attention_mask'), dtype=torch.long)

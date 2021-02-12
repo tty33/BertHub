@@ -40,17 +40,20 @@ def main():
     NAME = 'hfl/chinese-bert-wwm'
 
     fix_seed(SEED)
+    """
     if os.path.exists(os.path.join(PATH,'train.bin')) :
-        train = pickle.load(open(os.path.join(PATH,'train.bin')))
+        train = pickle.load(open(os.path.join(PATH,'train.bin'),mode='rb'))
     else:
         train = load_data(PATH, train_test='train')
         pickle.dump(train,open(os.path.join(PATH,'train.bin'),mode='wb'))
     if os.path.exists(os.path.join(PATH,'test.bin')) :
-        test = pickle.load(open(os.path.join(PATH,'test.bin')))
+        test = pickle.load(open(os.path.join(PATH,'test.bin'),mode='rb'))
     else:
         test = load_data(PATH, train_test='validation')
         pickle.dump(train,open(os.path.join(PATH,'test.bin'),mode='wb'))
-
+    """
+    train = load_data(PATH, train_test='train')
+    test = load_data(PATH, train_test='validation')
     print('train example: context={}, pair={}, label={}'.format(
                                         train[0].context, train[0].pair,train[0].label))
     print('test example: context={}, pair={}, label={}'.format(
@@ -58,12 +61,26 @@ def main():
     print('Data loaded!!')
     print('***************************')
     print("process train data ...")
-    train_dataloader, valid_dataloader = process(train, NAME, BATCH_SIZE, MAX_LENGTH, threshold=0.8)
+
+    # if os.path.exists(os.path.join(PATH,'train_dataloader.bin')) \
+    #         and os.path.exists(os.path.join(PATH,'valid_dataloader.bin')) :
+    #     train_dataloader = pickle.load(open(os.path.join(PATH,'train_dataloader.bin'),mode='rb'))
+    #     valid_dataloader = pickle.load(open(os.path.join(PATH,'valid_dataloader.bin'),mode='rb'))
+    # else:
+    #     train_dataloader, valid_dataloader = process(train, NAME, BATCH_SIZE, MAX_LENGTH, threshold=0.8)
+    #     pickle.dump(train_dataloader,open(os.path.join(PATH,'train_dataloader.bin'),mode='wb'))
+    #     pickle.dump(valid_dataloader,open(os.path.join(PATH,'valid_dataloader.bin'),mode='wb'))
+    train_dataloader, valid_dataloader = "",""
     del train
     print('train data process done !!')
     print('###########################')
     print("process test data ...")
-    test_dataloader = process(test, NAME, BATCH_SIZE, MAX_LENGTH)
+    if os.path.exists(os.path.join(PATH,'test_dataloader.bin')) and False:
+        test_dataloader = pickle.load(open(os.path.join(PATH,'test_dataloader.bin'),mode='rb'))
+    else:
+        test_dataloader = process(test, NAME, BATCH_SIZE, MAX_LENGTH)
+        pickle.dump(test_dataloader,open(os.path.join(PATH,'test_dataloader.bin'),mode='wb'))
+        # AttributeError: Can't pickle local object 'process.<locals>._init_fn'
     del test
     print('test data process done !!')
     print('###########################')
