@@ -38,7 +38,7 @@ def process(data, name, batch_size, max_length, threshold=None):
             get_features(data, features, max_length, tokenizer)
             pickle.dump(features, open(os.path.join(config.PATH, 'test_features.bin'), mode='wb'))
     else:  # 训练集
-        if os.path.exists(os.path.join(config.PATH, 'train_val_features.bin')) and False:
+        if os.path.exists(os.path.join(config.PATH, 'train_val_features.bin')):
             features = pickle.load(open(os.path.join(config.PATH, 'train_val_features.bin'), mode='rb'))
         else:
             get_features(data, features, max_length, tokenizer)
@@ -66,9 +66,9 @@ def process(data, name, batch_size, max_length, threshold=None):
             train_data, val_data = random_split(dataset, [train_size, val_size])
 
             train_loader = DataLoader(train_data, batch_size=batch_size,
-                                      sampler=RandomSampler(train_data), num_workers=2, worker_init_fn=_init_fn)
+                                      sampler=RandomSampler(train_data), num_workers=config.NUM_WORKERS, worker_init_fn=_init_fn)
             val_loader = DataLoader(val_data, batch_size=batch_size,
-                                    sampler=SequentialSampler(val_data), num_workers=2, worker_init_fn=_init_fn)
+                                    sampler=SequentialSampler(val_data), num_workers=config.NUM_WORKERS, worker_init_fn=_init_fn)
 
             return train_loader, val_loader
 
@@ -77,7 +77,7 @@ def process(data, name, batch_size, max_length, threshold=None):
     else:
 
         predict_loader = DataLoader(dataset, batch_size=batch_size,
-                                    sampler=SequentialSampler(dataset), num_workers=2, worker_init_fn=_init_fn)
+                                    sampler=SequentialSampler(dataset), num_workers=config.NUM_WORKERS, worker_init_fn=_init_fn)
 
         return predict_loader
 
