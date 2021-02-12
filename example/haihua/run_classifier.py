@@ -11,7 +11,7 @@ import random
 import numpy as np
 import time
 import pandas as pd
-
+from ToyBert import config
 from ToyBert.metric import flat_f1, flat_accuracy
 from transformers import AdamW, get_linear_schedule_with_warmup, BertTokenizer
 from ToyBert.utils import load_data, format_time, fix_seed
@@ -31,15 +31,8 @@ def main():
     bring a link. 
     4、Great wishes in modeling, enjoy it !!!
     '''
-    PATH = 'data/'
-    SEED = 2020
-    EPOCHS = 5
-    BATCH_SIZE = 16
-    MAX_LENGTH = 128
-    LEARNING_RATE = 1e-5
-    NAME = 'hfl/chinese-bert-wwm'
 
-    fix_seed(SEED)
+    fix_seed(config.SEED)
     """
     if os.path.exists(os.path.join(PATH,'train.bin')) :
         train = pickle.load(open(os.path.join(PATH,'train.bin'),mode='rb'))
@@ -52,50 +45,40 @@ def main():
         test = load_data(PATH, train_test='validation')
         pickle.dump(train,open(os.path.join(PATH,'test.bin'),mode='wb'))
     """
-    train = load_data(PATH, train_test='train')
-    test = load_data(PATH, train_test='validation')
+    train = load_data(config.PATH, train_test='train')
+    test = load_data(config.PATH, train_test='validation')
     print('train example: context={}, pair={}, label={}'.format(
-                                        train[0].context, train[0].pair,train[0].label))
+        train[0].context, train[0].pair, train[0].label))
     print('test example: context={}, pair={}, label={}'.format(
-                                        test[0].context, test[0].pair, test[0].label))
+        test[0].context, test[0].pair, test[0].label))
     print('Data loaded!!')
     print('***************************')
     print("process train data ...")
 
-    # if os.path.exists(os.path.join(PATH,'train_dataloader.bin')) \
-    #         and os.path.exists(os.path.join(PATH,'valid_dataloader.bin')) :
-    #     train_dataloader = pickle.load(open(os.path.join(PATH,'train_dataloader.bin'),mode='rb'))
-    #     valid_dataloader = pickle.load(open(os.path.join(PATH,'valid_dataloader.bin'),mode='rb'))
-    # else:
-    #     train_dataloader, valid_dataloader = process(train, NAME, BATCH_SIZE, MAX_LENGTH, threshold=0.8)
-    #     pickle.dump(train_dataloader,open(os.path.join(PATH,'train_dataloader.bin'),mode='wb'))
-    #     pickle.dump(valid_dataloader,open(os.path.join(PATH,'valid_dataloader.bin'),mode='wb'))
-    train_dataloader, valid_dataloader = "",""
+    train_dataloader, valid_dataloader = process(train, config.NAME, config.BATCH_SIZE, config.MAX_LENGTH, threshold=0.8)
+
     del train
     print('train data process done !!')
     print('###########################')
     print("process test data ...")
-    if os.path.exists(os.path.join(PATH,'test_dataloader.bin')) and False:
-        test_dataloader = pickle.load(open(os.path.join(PATH,'test_dataloader.bin'),mode='rb'))
-    else:
-        test_dataloader = process(test, NAME, BATCH_SIZE, MAX_LENGTH)
-        pickle.dump(test_dataloader,open(os.path.join(PATH,'test_dataloader.bin'),mode='wb'))
-        # AttributeError: Can't pickle local object 'process.<locals>._init_fn'
+
+    test_dataloader = process(test, config.NAME, config.BATCH_SIZE, config.MAX_LENGTH)
+
     del test
     print('test data process done !!')
     print('###########################')
-    bert = BertForMultipleChoice.from_pretrained(NAME)
-    optimizer = AdamW(bert.parameters(), lr=LEARNING_RATE)
-    total_steps = len(train_dataloader) * EPOCHS
+    bert = BertForMultipleChoice.from_pretrained(config.NAME)
+    optimizer = AdamW(bert.parameters(), lr=config.LEARNING_RATE)
+    total_steps = len(train_dataloader) * config.EPOCHS
     # change learning rate dynamically in total steps,
     # during warmup phase and train period
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=0, num_training_steps=total_steps)
 
     bert.cuda()
 
-    for epoch in range(EPOCHS):
+    for epoch in range(config.EPOCHS):
 
-        print('======== Epoch {:} / {:} ========'.format(epoch + 1, EPOCHS))
+        print('======== Epoch {:} / {:} ========'.format(epoch + 1, config.EPOCHS))
         print('Training...')
         bert.train()
         start_train = time.time()
@@ -112,8 +95,8 @@ def main():
             batch_labels = batch[4].cuda()
 
             outputs = bert(batch_input_ids,
-                                batch_attention_masks, batch_token_type_ids, labels=batch_labels)
-    
+                           batch_attention_masks, batch_token_type_ids, labels=batch_labels)
+
             del batch_input_ids, batch_token_type_ids, batch_attention_masks, batch_labels
 
             bert.zero_grad()
@@ -147,14 +130,12 @@ def main():
 
             with torch.no_grad():
                 outputs = bert(batch_input_ids,
-                                    batch_attention_masks, batch_token_type_ids, labels=batch_labels)
+                               batch_attention_masks, batch_token_type_ids, labels=batch_labels)
                 total_eval_loss += outputs.loss.item()
 
-            
         average_eval_loss = total_eval_loss / len(valid_dataloader)
         total_eval_f1 += flat_accuracy(outputs.logits, batch_labels)
         del batch_input_ids, batch_token_type_ids, batch_attention_masks, batch_labels
-
 
         validation_time = format_time(time.time() - start_eval)
         print("  Average eval CrossEntropyLoss: {0:.2f}".format(average_eval_loss))
@@ -172,7 +153,7 @@ def main():
 
         with torch.no_grad():
             outputs = bert(batch_input_ids,
-                                batch_attention_masks, batch_token_type_ids)
+                           batch_attention_masks, batch_token_type_ids)
 
         ids = batch_ids.tolist()
         logits = outputs.logits.detach().cpu().numpy()
@@ -181,9 +162,10 @@ def main():
         predictions += flat_predictions
 
     def convert_id(x):
-        if len(str(x))<6:
-            return '0' * (6-len(str(x))) + str(x)
+        if len(str(x)) < 6:
+            return '0' * (6 - len(str(x))) + str(x)
         return str(x)
+
     def convert_label(x):
         res = ['A', 'B', 'C', 'D']
         return res[x]
@@ -193,13 +175,11 @@ def main():
     sub['label'] = predictions
     sub['label'] = sub['label'].apply(convert_label)
 
-    sub.sort_values('id',inplace=True)
+    sub.sort_values('id', inplace=True)
     sub['id'] = sub['id'].apply(convert_id)
     sub.to_csv('/content/drive/MyDrive/drive/haihua/output/sub.csv', index=False)
     print('Everything Done !!')
-    
 
 
 if __name__ == '__main__':
     main()
-

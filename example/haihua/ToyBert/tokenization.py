@@ -4,12 +4,17 @@
 # @Author  : 姜小帅
 # @Moto    : 良好的阶段性收获是坚持的重要动力之一
 # @Contract: Mason_Jay@163.com
+import os
+import pickle
 import torch
 import numpy as np
 from transformers import BertTokenizer
 from torch.utils.data import DataLoader, SequentialSampler, RandomSampler, random_split, TensorDataset
 from ToyBert.utils import InputFeature, select_field
+from ToyBert import config
 from tqdm import tqdm
+
+
 def process(data, name, batch_size, max_length, threshold=None):
     '''
     Parameters@
@@ -26,9 +31,61 @@ def process(data, name, batch_size, max_length, threshold=None):
     tokenizer = BertTokenizer.from_pretrained(name)
     features = []
 
+    if len(data) == 2444:  # 说明是测试集
+        if os.path.exists(os.path.join(config.PATH, 'test_features.bin')):
+            features = pickle.load(open(os.path.join(config.PATH, 'test_features.bin'), mode='rb'))
+        else:
+            get_features(data, features, max_length, tokenizer)
+            pickle.dump(features, open(os.path.join(config.PATH, 'test_features.bin'), mode='wb'))
+    else:  # 训练集
+        if os.path.exists(os.path.join(config.PATH, 'train_val_features.bin')) and False:
+            features = pickle.load(open(os.path.join(config.PATH, 'train_val_features.bin'), mode='rb'))
+        else:
+            get_features(data, features, max_length, tokenizer)
+            pickle.dump(features, open(os.path.join(config.PATH, 'train_val_features.bin'), mode='wb'))
+
+    ids = torch.tensor([f.example_id for f in features], dtype=torch.long)
+    input_ids = torch.tensor(select_field(features, 'input_ids'), dtype=torch.long)
+    attention_mask = torch.tensor(select_field(features, 'attention_mask'), dtype=torch.long)
+    token_type_ids = torch.tensor(select_field(features, 'token_type_ids'), dtype=torch.long)
+    labels = torch.tensor([f.label for f in features], dtype=torch.long)
+
+    # pack up and transform to form of dataloader, which is feeded to model,
+    # return train set and vaild set while  threshold is not None,
+    # otherwise, predict dataloader
+    dataset = TensorDataset(ids, input_ids, token_type_ids, attention_mask, labels)
+
+    def _init_fn(worker_id):
+        np.random.seed(int(2020))
+
+    if threshold:
+
+        if threshold > 0 or threshold < 1:
+            train_size = int(threshold * len(dataset))
+            val_size = len(dataset) - train_size
+            train_data, val_data = random_split(dataset, [train_size, val_size])
+
+            train_loader = DataLoader(train_data, batch_size=batch_size,
+                                      sampler=RandomSampler(train_data), num_workers=2, worker_init_fn=_init_fn)
+            val_loader = DataLoader(val_data, batch_size=batch_size,
+                                    sampler=SequentialSampler(val_data), num_workers=2, worker_init_fn=_init_fn)
+
+            return train_loader, val_loader
+
+        else:
+            print('NumericalError: threshold out of range, a correct value must between (0,1)')
+    else:
+
+        predict_loader = DataLoader(dataset, batch_size=batch_size,
+                                    sampler=SequentialSampler(dataset), num_workers=2, worker_init_fn=_init_fn)
+
+        return predict_loader
+
+
+def get_features(data, features, max_length, tokenizer):
     for example in tqdm(data):
         choices_features = []
-        count= 0
+        count = 0
         for para, qa in zip(example.pair, example.context):
             count += 1
             encode_dic = tokenizer.encode_plus(
@@ -48,7 +105,7 @@ def process(data, name, batch_size, max_length, threshold=None):
             token_type_ids = encode_dic['token_type_ids'].tolist()[0]
 
             choices_features.append((input_ids, attention_mask, token_type_ids))
-        for j in range(4-count):
+        for j in range(4 - count):
             input_ids = [0] * max_length
             attention_mask = [0] * max_length
             token_type_ids = [0] * max_length
@@ -56,50 +113,11 @@ def process(data, name, batch_size, max_length, threshold=None):
 
         label = example.label
         Id = example.Id
-    
+
         features.append(
-                InputFeature(
-                    example_id = Id,
-                    choices_features = choices_features,
-                    label = label
-                )
+            InputFeature(
+                example_id=Id,
+                choices_features=choices_features,
+                label=label
             )
-
-
-
-    ids = torch.tensor([f.example_id for f in features], dtype=torch.long)
-    input_ids = torch.tensor(select_field(features, 'input_ids'), dtype=torch.long)
-    attention_mask = torch.tensor(select_field(features, 'attention_mask'), dtype=torch.long)
-    token_type_ids = torch.tensor(select_field(features, 'token_type_ids'), dtype=torch.long)
-    labels = torch.tensor([f.label for f in features], dtype=torch.long)
-        
-    # pack up and transform to form of dataloader, which is feeded to model,
-    # return train set and vaild set while  threshold is not None,
-    # otherwise, predict dataloader
-    dataset = TensorDataset(ids, input_ids, token_type_ids, attention_mask, labels)
-
-    def _init_fn(worker_id):
-        np.random.seed(int(2020))
-    if threshold:
-
-        if threshold > 0 or threshold < 1:
-            train_size = int(threshold * len(dataset))
-            val_size = len(dataset) - train_size
-            train_data, val_data = random_split(dataset, [train_size, val_size])
-
-            train_loader = DataLoader(train_data, batch_size=batch_size,
-                                      sampler=RandomSampler(train_data), num_workers=2, worker_init_fn=_init_fn)
-            val_loader = DataLoader(val_data, batch_size=batch_size,
-                                    sampler=SequentialSampler(val_data), num_workers=2, worker_init_fn=_init_fn)
-
-            return train_loader, val_loader
-
-        else:
-            print('NumericalError: threshold out of range, a correct value must between (0,1)')
-    else:
-
-        predict_loader = DataLoader(dataset, batch_size=batch_size, 
-                                    sampler=SequentialSampler(dataset), num_workers=2, worker_init_fn=_init_fn)
-
-        return predict_loader
-
+        )
